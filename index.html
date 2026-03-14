@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOC Report Lexicon</title>
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="Bilingual SOC reporting lexicon app with offline exam, writing practice, and spaced repetition." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --bg:#0b1220; --panel:#111a2b; --panel2:#172338; --text:#e5edf8; --muted:#a9b7cc;
+      --accent:#60a5fa; --accent2:#34d399; --danger:#fb7185; --border:#243149; --card:#0f172a;
+      --shadow:0 12px 30px rgba(0,0,0,.24);
+    }
+    body.light {
+      --bg:#f3f7fc; --panel:#ffffff; --panel2:#edf3fb; --text:#0f172a; --muted:#475569;
+      --accent:#2563eb; --accent2:#059669; --danger:#e11d48; --border:#d8e1ef; --card:#ffffff;
+      --shadow:0 10px 24px rgba(2,6,23,.08);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial, Helvetica, sans-serif; background:linear-gradient(180deg,var(--bg),#09111d 35%,var(--bg)); color:var(--text); }
+    body.light { background:linear-gradient(180deg,#f8fbff,#eef4fb 40%,#f5f9ff); }
+    .app { max-width:1100px; margin:0 auto; padding:16px; }
+    .hero, .panel, .card { background:var(--panel); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow); }
+    .hero { padding:20px; position:sticky; top:0; z-index:5; backdrop-filter: blur(8px); }
+    .hero h1 { margin:0 0 6px; font-size:1.6rem; }
+    .muted { color:var(--muted); }
+    .controls { display:grid; grid-template-columns:1.3fr 1fr 1fr auto auto auto; gap:10px; margin-top:14px; }
+    input, select, textarea, button { width:100%; border-radius:14px; border:1px solid var(--border); padding:12px 14px; font-size:1rem; background:var(--panel2); color:var(--text); }
+    button { cursor:pointer; font-weight:700; }
+    button.primary { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:white; border:none; }
+    button.secondary { background:linear-gradient(135deg,var(--accent2),#10b981); color:white; border:none; }
+    button.ghost { background:transparent; }
+    .tabs { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; margin:14px 0 18px; }
+    .tab.active { outline:2px solid var(--accent); }
+    .grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+    .list { padding:14px; }
+    .phrase { padding:14px; border:1px solid var(--border); border-radius:16px; margin-bottom:10px; background:var(--card); }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .badge { font-size:.8rem; padding:5px 10px; border-radius:999px; background:var(--panel2); border:1px solid var(--border); color:var(--muted); }
+    .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    .side { display:grid; gap:16px; }
+    .panel { padding:16px; }
+    .card { padding:18px; }
+    .flash { min-height:220px; display:grid; align-content:center; text-align:center; }
+    .flash .big { font-size:1.35rem; font-weight:700; }
+    .center { text-align:center; }
+    .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .stat { padding:14px; border-radius:16px; background:var(--panel2); border:1px solid var(--border); }
+    .progressbar { height:10px; border-radius:999px; background:var(--panel2); overflow:hidden; }
+    .progressbar > div { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+    .small { font-size:.9rem; }
+    .question { font-size:1.1rem; font-weight:700; margin-bottom:14px; }
+    .options { display:grid; gap:10px; }
+    .historyItem { display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:10px 0; }
+    canvas { max-width:100%; border-radius:18px; border:1px solid var(--border); background:white; }
+    .hidden { display:none; }
+    @media (max-width: 860px) {
+      .controls { grid-template-columns:1fr 1fr; }
+      .tabs { grid-template-columns:repeat(2,1fr); }
+      .grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="hero">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h1 id="appTitle"></h1>
+          <div class="muted" id="tagline"></div>
+        </div>
+        <div class="row">
+          <button id="themeBtn" class="ghost">🌓</button>
+          <select id="langSelect" style="width:auto;">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+        </div>
+      </div>
+      <div class="controls">
+        <input id="searchInput" />
+        <select id="categorySelect"></select>
+        <select id="modeFilter">
+          <option value="all">All</option>
+          <option value="new">New</option>
+          <option value="weak">Weak</option>
+          <option value="mastered">Mastered</option>
+        </select>
+        <button id="dailyBtn" class="secondary"></button>
+        <button id="speakBtn"></button>
+        <button id="installBtn" class="primary hidden"></button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="browse"></button>
+        <button class="tab" data-tab="flashcards"></button>
+        <button class="tab" data-tab="quiz"></button>
+        <button class="tab" data-tab="exam"></button>
+        <button class="tab" data-tab="writing"></button>
+        <button class="tab" data-tab="review"></button>
+        <button class="tab" data-tab="notes"></button>
+        <button class="tab" data-tab="stats"></button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div id="mainPanel" class="panel"></div>
+      <aside class="side">
+        <div class="panel">
+          <div class="row" style="justify-content:space-between;">
+            <strong id="scoreHistoryLabel"></strong>
+            <button id="resetProgressBtn" class="ghost small"></button>
+          </div>
+          <div id="historyList" class="small"></div>
+        </div>
+        <div class="panel">
+          <div class="stats">
+            <div class="stat"><div class="muted small" id="studiedLabel"></div><div id="studiedCount" class="bigNum">0</div></div>
+            <div class="stat"><div class="muted small" id="masteredLabel"></div><div id="masteredCount" class="bigNum">0</div></div>
+            <div class="stat"><div class="muted small" id="weakCountLabel"></div><div id="weakCount" class="bigNum">0</div></div>
+            <div class="stat"><div class="muted small">Daily</div><div id="dailyCount" class="bigNum">0/10</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="muted small" id="footerText"></div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+  const PHRASES = [{"id": 1, "category": "Detection & Monitoring", "en": "detected suspicious activity", "fr": "a détecté une activité suspecte"}, {"id": 2, "category": "Detection & Monitoring", "en": "identified anomalous behavior", "fr": "a identifié un comportement anormal"}, {"id": 3, "category": "Detection & Monitoring", "en": "observed unusual traffic", "fr": "a observé un trafic inhabituel"}, {"id": 4, "category": "Detection & Monitoring", "en": "flagged a security alert", "fr": "a signalé une alerte de sécurité"}, {"id": 5, "category": "Detection & Monitoring", "en": "triggered an automated alert", "fr": "a déclenché une alerte automatisée"}, {"id": 6, "category": "Detection & Monitoring", "en": "generated a SIEM alert", "fr": "a généré une alerte SIEM"}, {"id": 7, "category": "Detection & Monitoring", "en": "recorded a security event", "fr": "a enregistré un événement de sécurité"}, {"id": 8, "category": "Detection & Monitoring", "en": "logged authentication attempts", "fr": "a consigné des tentatives d’authentification"}, {"id": 9, "category": "Detection & Monitoring", "en": "captured network traffic", "fr": "a capturé le trafic réseau"}, {"id": 10, "category": "Detection & Monitoring", "en": "detected unauthorized access", "fr": "a détecté un accès non autorisé"}, {"id": 11, "category": "Detection & Monitoring", "en": "identified abnormal patterns", "fr": "a identifié des schémas anormaux"}, {"id": 12, "category": "Detection & Monitoring", "en": "flagged suspicious connections", "fr": "a signalé des connexions suspectes"}, {"id": 13, "category": "Detection & Monitoring", "en": "observed repeated login failures", "fr": "a observé des échecs de connexion répétés"}, {"id": 14, "category": "Detection & Monitoring", "en": "detected malicious payload", "fr": "a détecté une charge utile malveillante"}, {"id": 15, "category": "Detection & Monitoring", "en": "identified potential compromise", "fr": "a identifié une compromission potentielle"}, {"id": 16, "category": "Detection & Monitoring", "en": "captured malicious packets", "fr": "a capturé des paquets malveillants"}, {"id": 17, "category": "Detection & Monitoring", "en": "recorded abnormal activity", "fr": "a enregistré une activité anormale"}, {"id": 18, "category": "Detection & Monitoring", "en": "detected unusual process execution", "fr": "a détecté une exécution de processus inhabituelle"}, {"id": 19, "category": "Detection & Monitoring", "en": "observed suspicious network requests", "fr": "a observé des requêtes réseau suspectes"}, {"id": 20, "category": "Detection & Monitoring", "en": "identified suspicious outbound traffic", "fr": "a identifié un trafic sortant suspect"}, {"id": 21, "category": "Detection & Monitoring", "en": "triggered an IDS alert", "fr": "a déclenché une alerte IDS"}, {"id": 22, "category": "Detection & Monitoring", "en": "detected privilege escalation attempt", "fr": "a détecté une tentative d’élévation de privilèges"}, {"id": 23, "category": "Detection & Monitoring", "en": "observed abnormal login behavior", "fr": "a observé un comportement de connexion anormal"}, {"id": 24, "category": "Detection & Monitoring", "en": "flagged potential malware activity", "fr": "a signalé une activité potentielle de logiciel malveillant"}, {"id": 25, "category": "Detection & Monitoring", "en": "detected unusual data transfer", "fr": "a détecté un transfert de données inhabituel"}, {"id": 26, "category": "Detection & Monitoring", "en": "observed suspicious file execution", "fr": "a observé une exécution de fichier suspecte"}, {"id": 27, "category": "Detection & Monitoring", "en": "detected unauthorized privilege usage", "fr": "a détecté une utilisation non autorisée des privilèges"}, {"id": 28, "category": "Detection & Monitoring", "en": "identified suspicious system behavior", "fr": "a identifié un comportement système suspect"}, {"id": 29, "category": "Detection & Monitoring", "en": "recorded suspicious registry changes", "fr": "a enregistré des modifications suspectes du registre"}, {"id": 30, "category": "Detection & Monitoring", "en": "flagged unusual DNS queries", "fr": "a signalé des requêtes DNS inhabituelles"}, {"id": 31, "category": "Detection & Monitoring", "en": "observed unusual system calls", "fr": "a observé des appels système inhabituels"}, {"id": 32, "category": "Detection & Monitoring", "en": "identified abnormal authentication attempts", "fr": "a identifié des tentatives d’authentification anormales"}, {"id": 33, "category": "Detection & Monitoring", "en": "detected abnormal host communication", "fr": "a détecté une communication hôte anormale"}, {"id": 34, "category": "Detection & Monitoring", "en": "observed suspicious remote access", "fr": "a observé un accès distant suspect"}, {"id": 35, "category": "Detection & Monitoring", "en": "flagged potentially malicious activity", "fr": "a signalé une activité potentiellement malveillante"}, {"id": 36, "category": "Detection & Monitoring", "en": "detected suspicious command execution", "fr": "a détecté une exécution de commande suspecte"}, {"id": 37, "category": "Detection & Monitoring", "en": "identified malicious indicators", "fr": "a identifié des indicateurs malveillants"}, {"id": 38, "category": "Detection & Monitoring", "en": "recorded suspicious connection attempts", "fr": "a enregistré des tentatives de connexion suspectes"}, {"id": 39, "category": "Detection & Monitoring", "en": "detected unusual outbound requests", "fr": "a détecté des requêtes sortantes inhabituelles"}, {"id": 40, "category": "Detection & Monitoring", "en": "observed suspicious endpoint activity", "fr": "a observé une activité suspecte sur le terminal"}, {"id": 41, "category": "Investigation & Analysis", "en": "conducted log analysis", "fr": "a effectué une analyse des journaux"}, {"id": 42, "category": "Investigation & Analysis", "en": "reviewed system logs", "fr": "a examiné les journaux système"}, {"id": 43, "category": "Investigation & Analysis", "en": "analyzed network traffic", "fr": "a analysé le trafic réseau"}, {"id": 44, "category": "Investigation & Analysis", "en": "examined forensic artifacts", "fr": "a examiné des artefacts forensiques"}, {"id": 45, "category": "Investigation & Analysis", "en": "investigated security alerts", "fr": "a enquêté sur les alertes de sécurité"}, {"id": 46, "category": "Investigation & Analysis", "en": "reviewed authentication logs", "fr": "a examiné les journaux d’authentification"}, {"id": 47, "category": "Investigation & Analysis", "en": "inspected packet captures", "fr": "a inspecté les captures de paquets"}, {"id": 48, "category": "Investigation & Analysis", "en": "analyzed event correlations", "fr": "a analysé les corrélations d’événements"}, {"id": 49, "category": "Investigation & Analysis", "en": "examined suspicious processes", "fr": "a examiné des processus suspects"}, {"id": 50, "category": "Investigation & Analysis", "en": "investigated abnormal behavior", "fr": "a enquêté sur un comportement anormal"}, {"id": 51, "category": "Investigation & Analysis", "en": "analyzed endpoint telemetry", "fr": "a analysé la télémétrie des terminaux"}, {"id": 52, "category": "Investigation & Analysis", "en": "reviewed firewall logs", "fr": "a examiné les journaux du pare-feu"}, {"id": 53, "category": "Investigation & Analysis", "en": "inspected suspicious files", "fr": "a inspecté des fichiers suspects"}, {"id": 54, "category": "Investigation & Analysis", "en": "examined system registry entries", "fr": "a examiné les entrées du registre système"}, {"id": 55, "category": "Investigation & Analysis", "en": "analyzed malicious scripts", "fr": "a analysé des scripts malveillants"}, {"id": 56, "category": "Investigation & Analysis", "en": "reviewed system configuration changes", "fr": "a examiné les modifications de configuration système"}, {"id": 57, "category": "Investigation & Analysis", "en": "investigated abnormal network activity", "fr": "a enquêté sur une activité réseau anormale"}, {"id": 58, "category": "Investigation & Analysis", "en": "correlated multiple alerts", "fr": "a corrélé plusieurs alertes"}, {"id": 59, "category": "Investigation & Analysis", "en": "examined suspicious domains", "fr": "a examiné des domaines suspects"}, {"id": 60, "category": "Investigation & Analysis", "en": "reviewed security logs", "fr": "a examiné les journaux de sécurité"}, {"id": 61, "category": "Investigation & Analysis", "en": "investigated potential compromise", "fr": "a enquêté sur une compromission potentielle"}, {"id": 62, "category": "Investigation & Analysis", "en": "analyzed malicious indicators", "fr": "a analysé des indicateurs malveillants"}, {"id": 63, "category": "Investigation & Analysis", "en": "inspected suspicious command execution", "fr": "a inspecté une exécution de commande suspecte"}, {"id": 64, "category": "Investigation & Analysis", "en": "reviewed system event records", "fr": "a examiné les enregistrements d’événements système"}, {"id": 65, "category": "Investigation & Analysis", "en": "analyzed suspicious email headers", "fr": "a analysé des en-têtes d’e-mail suspects"}, {"id": 66, "category": "Investigation & Analysis", "en": "examined endpoint processes", "fr": "a examiné les processus des terminaux"}, {"id": 67, "category": "Investigation & Analysis", "en": "investigated unauthorized login attempts", "fr": "a enquêté sur des tentatives de connexion non autorisées"}, {"id": 68, "category": "Investigation & Analysis", "en": "correlated indicators of compromise", "fr": "a corrélé des indicateurs de compromission"}, {"id": 69, "category": "Investigation & Analysis", "en": "examined network session data", "fr": "a examiné les données de session réseau"}, {"id": 70, "category": "Investigation & Analysis", "en": "reviewed IDS alerts", "fr": "a examiné les alertes IDS"}, {"id": 71, "category": "Investigation & Analysis", "en": "analyzed DNS queries", "fr": "a analysé les requêtes DNS"}, {"id": 72, "category": "Investigation & Analysis", "en": "investigated suspicious authentication patterns", "fr": "a enquêté sur des schémas d’authentification suspects"}, {"id": 73, "category": "Investigation & Analysis", "en": "examined abnormal system behavior", "fr": "a examiné un comportement système anormal"}, {"id": 74, "category": "Investigation & Analysis", "en": "analyzed threat intelligence indicators", "fr": "a analysé des indicateurs de renseignement sur les menaces"}, {"id": 75, "category": "Investigation & Analysis", "en": "reviewed suspicious file activity", "fr": "a examiné une activité de fichier suspecte"}, {"id": 76, "category": "Investigation & Analysis", "en": "inspected system audit logs", "fr": "a inspecté les journaux d’audit système"}, {"id": 77, "category": "Investigation & Analysis", "en": "investigated privilege escalation attempts", "fr": "a enquêté sur des tentatives d’élévation de privilèges"}, {"id": 78, "category": "Investigation & Analysis", "en": "analyzed abnormal data flows", "fr": "a analysé des flux de données anormaux"}, {"id": 79, "category": "Investigation & Analysis", "en": "examined suspicious remote sessions", "fr": "a examiné des sessions distantes suspectes"}, {"id": 80, "category": "Investigation & Analysis", "en": "reviewed abnormal network patterns", "fr": "a examiné des schémas réseau anormaux"}, {"id": 81, "category": "Investigation & Analysis", "en": "analyzed suspicious host behavior", "fr": "a analysé un comportement hôte suspect"}, {"id": 82, "category": "Investigation & Analysis", "en": "examined command history logs", "fr": "a examiné les journaux d’historique des commandes"}, {"id": 83, "category": "Investigation & Analysis", "en": "investigated malicious payloads", "fr": "a enquêté sur des charges utiles malveillantes"}, {"id": 84, "category": "Investigation & Analysis", "en": "reviewed suspicious executable files", "fr": "a examiné des fichiers exécutables suspects"}, {"id": 85, "category": "Investigation & Analysis", "en": "analyzed endpoint security alerts", "fr": "a analysé les alertes de sécurité des terminaux"}, {"id": 86, "category": "Investigation & Analysis", "en": "examined suspicious URL requests", "fr": "a examiné des requêtes URL suspectes"}, {"id": 87, "category": "Investigation & Analysis", "en": "investigated unauthorized process execution", "fr": "a enquêté sur une exécution de processus non autorisée"}, {"id": 88, "category": "Investigation & Analysis", "en": "reviewed application logs", "fr": "a examiné les journaux d’application"}, {"id": 89, "category": "Investigation & Analysis", "en": "analyzed abnormal user behavior", "fr": "a analysé un comportement utilisateur anormal"}, {"id": 90, "category": "Investigation & Analysis", "en": "examined threat indicators", "fr": "a examiné des indicateurs de menace"}, {"id": 91, "category": "Identification & Confirmation", "en": "confirmed malicious activity", "fr": "a confirmé une activité malveillante"}, {"id": 92, "category": "Identification & Confirmation", "en": "validated suspicious behavior", "fr": "a validé un comportement suspect"}, {"id": 93, "category": "Identification & Confirmation", "en": "verified system compromise", "fr": "a vérifié une compromission du système"}, {"id": 94, "category": "Identification & Confirmation", "en": "confirmed unauthorized access", "fr": "a confirmé un accès non autorisé"}, {"id": 95, "category": "Identification & Confirmation", "en": "validated threat indicators", "fr": "a validé des indicateurs de menace"}, {"id": 96, "category": "Identification & Confirmation", "en": "verified suspicious traffic", "fr": "a vérifié un trafic suspect"}, {"id": 97, "category": "Identification & Confirmation", "en": "confirmed malware presence", "fr": "a confirmé la présence d’un logiciel malveillant"}, {"id": 98, "category": "Identification & Confirmation", "en": "validated IOC indicators", "fr": "a validé des indicateurs IOC"}, {"id": 99, "category": "Identification & Confirmation", "en": "verified abnormal system activity", "fr": "a vérifié une activité système anormale"}, {"id": 100, "category": "Identification & Confirmation", "en": "confirmed attacker persistence", "fr": "a confirmé la persistance de l’attaquant"}, {"id": 101, "category": "Identification & Confirmation", "en": "validated command-and-control communication", "fr": "a validé une communication de commande et contrôle"}, {"id": 102, "category": "Identification & Confirmation", "en": "confirmed data exfiltration attempt", "fr": "a confirmé une tentative d’exfiltration de données"}, {"id": 103, "category": "Identification & Confirmation", "en": "verified malicious file execution", "fr": "a vérifié une exécution de fichier malveillante"}, {"id": 104, "category": "Identification & Confirmation", "en": "confirmed lateral movement attempt", "fr": "a confirmé une tentative de déplacement latéral"}, {"id": 105, "category": "Identification & Confirmation", "en": "validated suspicious login activity", "fr": "a validé une activité de connexion suspecte"}, {"id": 106, "category": "Identification & Confirmation", "en": "verified compromised credentials", "fr": "a vérifié des identifiants compromis"}, {"id": 107, "category": "Identification & Confirmation", "en": "confirmed malicious script execution", "fr": "a confirmé une exécution de script malveillante"}, {"id": 108, "category": "Identification & Confirmation", "en": "validated suspicious network requests", "fr": "a validé des requêtes réseau suspectes"}, {"id": 109, "category": "Identification & Confirmation", "en": "verified privilege escalation attempt", "fr": "a vérifié une tentative d’élévation de privilèges"}, {"id": 110, "category": "Identification & Confirmation", "en": "confirmed malicious domain communication", "fr": "a confirmé une communication avec un domaine malveillant"}, {"id": 111, "category": "Identification & Confirmation", "en": "validated malicious IP address", "fr": "a validé une adresse IP malveillante"}, {"id": 112, "category": "Identification & Confirmation", "en": "verified suspicious registry modifications", "fr": "a vérifié des modifications suspectes du registre"}, {"id": 113, "category": "Identification & Confirmation", "en": "confirmed abnormal authentication activity", "fr": "a confirmé une activité d’authentification anormale"}, {"id": 114, "category": "Identification & Confirmation", "en": "validated suspicious endpoint behavior", "fr": "a validé un comportement suspect sur le terminal"}, {"id": 115, "category": "Identification & Confirmation", "en": "verified suspicious outbound connections", "fr": "a vérifié des connexions sortantes suspectes"}, {"id": 116, "category": "Identification & Confirmation", "en": "confirmed compromised host activity", "fr": "a confirmé une activité sur un hôte compromis"}, {"id": 117, "category": "Identification & Confirmation", "en": "validated malicious payload delivery", "fr": "a validé la livraison d’une charge utile malveillante"}, {"id": 118, "category": "Identification & Confirmation", "en": "verified attacker persistence mechanisms", "fr": "a vérifié les mécanismes de persistance de l’attaquant"}, {"id": 119, "category": "Identification & Confirmation", "en": "confirmed suspicious system modification", "fr": "a confirmé une modification suspecte du système"}, {"id": 120, "category": "Identification & Confirmation", "en": "validated suspicious command execution", "fr": "a validé une exécution de commande suspecte"}, {"id": 121, "category": "Identification & Confirmation", "en": "verified malicious process creation", "fr": "a vérifié la création d’un processus malveillant"}, {"id": 122, "category": "Identification & Confirmation", "en": "confirmed abnormal DNS queries", "fr": "a confirmé des requêtes DNS anormales"}, {"id": 123, "category": "Identification & Confirmation", "en": "validated suspicious network sessions", "fr": "a validé des sessions réseau suspectes"}, {"id": 124, "category": "Identification & Confirmation", "en": "verified unauthorized administrative access", "fr": "a vérifié un accès administratif non autorisé"}, {"id": 125, "category": "Identification & Confirmation", "en": "confirmed suspicious PowerShell activity", "fr": "a confirmé une activité PowerShell suspecte"}, {"id": 126, "category": "Identification & Confirmation", "en": "validated abnormal user activity", "fr": "a validé une activité utilisateur anormale"}, {"id": 127, "category": "Identification & Confirmation", "en": "verified malware infection", "fr": "a vérifié une infection par logiciel malveillant"}, {"id": 128, "category": "Identification & Confirmation", "en": "confirmed malicious traffic patterns", "fr": "a confirmé des schémas de trafic malveillant"}, {"id": 129, "category": "Identification & Confirmation", "en": "validated suspicious domain resolution", "fr": "a validé une résolution de domaine suspecte"}, {"id": 130, "category": "Identification & Confirmation", "en": "verified abnormal host communication", "fr": "a vérifié une communication hôte anormale"}, {"id": 131, "category": "Containment & Mitigation", "en": "isolated the affected system", "fr": "a isolé le système affecté"}, {"id": 132, "category": "Containment & Mitigation", "en": "blocked malicious IP addresses", "fr": "a bloqué des adresses IP malveillantes"}, {"id": 133, "category": "Containment & Mitigation", "en": "terminated malicious processes", "fr": "a arrêté des processus malveillants"}, {"id": 134, "category": "Containment & Mitigation", "en": "disabled compromised accounts", "fr": "a désactivé des comptes compromis"}, {"id": 135, "category": "Containment & Mitigation", "en": "revoked unauthorized access", "fr": "a révoqué un accès non autorisé"}, {"id": 136, "category": "Containment & Mitigation", "en": "contained the incident", "fr": "a contenu l’incident"}, {"id": 137, "category": "Containment & Mitigation", "en": "quarantined infected files", "fr": "a mis en quarantaine des fichiers infectés"}, {"id": 138, "category": "Containment & Mitigation", "en": "blocked suspicious domains", "fr": "a bloqué des domaines suspects"}, {"id": 139, "category": "Containment & Mitigation", "en": "restricted network access", "fr": "a restreint l’accès réseau"}, {"id": 140, "category": "Containment & Mitigation", "en": "disabled compromised credentials", "fr": "a désactivé des identifiants compromis"}, {"id": 141, "category": "Containment & Mitigation", "en": "prevented further lateral movement", "fr": "a empêché tout déplacement latéral supplémentaire"}, {"id": 142, "category": "Containment & Mitigation", "en": "stopped malicious communication", "fr": "a stoppé une communication malveillante"}, {"id": 143, "category": "Containment & Mitigation", "en": "blocked suspicious network traffic", "fr": "a bloqué un trafic réseau suspect"}, {"id": 144, "category": "Containment & Mitigation", "en": "isolated infected endpoints", "fr": "a isolé des terminaux infectés"}, {"id": 145, "category": "Containment & Mitigation", "en": "disabled suspicious services", "fr": "a désactivé des services suspects"}, {"id": 146, "category": "Containment & Mitigation", "en": "removed malicious scripts", "fr": "a supprimé des scripts malveillants"}, {"id": 147, "category": "Containment & Mitigation", "en": "restricted unauthorized privileges", "fr": "a restreint des privilèges non autorisés"}, {"id": 148, "category": "Containment & Mitigation", "en": "blocked attacker infrastructure", "fr": "a bloqué l’infrastructure de l’attaquant"}, {"id": 149, "category": "Containment & Mitigation", "en": "prevented unauthorized connections", "fr": "a empêché des connexions non autorisées"}, {"id": 150, "category": "Containment & Mitigation", "en": "terminated remote sessions", "fr": "a terminé des sessions distantes"}, {"id": 151, "category": "Containment & Mitigation", "en": "disabled suspicious accounts", "fr": "a désactivé des comptes suspects"}, {"id": 152, "category": "Containment & Mitigation", "en": "isolated compromised servers", "fr": "a isolé des serveurs compromis"}, {"id": 153, "category": "Containment & Mitigation", "en": "blocked malicious email senders", "fr": "a bloqué des expéditeurs d’e-mails malveillants"}, {"id": 154, "category": "Containment & Mitigation", "en": "restricted administrative privileges", "fr": "a restreint des privilèges administratifs"}, {"id": 155, "category": "Containment & Mitigation", "en": "removed attacker persistence mechanisms", "fr": "a supprimé les mécanismes de persistance de l’attaquant"}, {"id": 156, "category": "Containment & Mitigation", "en": "disabled malicious scheduled tasks", "fr": "a désactivé des tâches planifiées malveillantes"}, {"id": 157, "category": "Containment & Mitigation", "en": "restricted suspicious user sessions", "fr": "a restreint des sessions utilisateur suspectes"}, {"id": 158, "category": "Containment & Mitigation", "en": "blocked malicious downloads", "fr": "a bloqué des téléchargements malveillants"}, {"id": 159, "category": "Containment & Mitigation", "en": "isolated affected network segments", "fr": "a isolé des segments réseau affectés"}, {"id": 160, "category": "Containment & Mitigation", "en": "terminated malicious shell sessions", "fr": "a arrêté des sessions shell malveillantes"}, {"id": 161, "category": "Containment & Mitigation", "en": "restricted suspicious processes", "fr": "a restreint des processus suspects"}, {"id": 162, "category": "Containment & Mitigation", "en": "disabled vulnerable services", "fr": "a désactivé des services vulnérables"}, {"id": 163, "category": "Containment & Mitigation", "en": "removed malicious registry entries", "fr": "a supprimé des entrées de registre malveillantes"}, {"id": 164, "category": "Containment & Mitigation", "en": "blocked suspicious external communication", "fr": "a bloqué des communications externes suspectes"}, {"id": 165, "category": "Containment & Mitigation", "en": "restricted attacker command channels", "fr": "a restreint les canaux de commande de l’attaquant"}, {"id": 166, "category": "Containment & Mitigation", "en": "disabled compromised tokens", "fr": "a désactivé des jetons compromis"}, {"id": 167, "category": "Containment & Mitigation", "en": "isolated compromised applications", "fr": "a isolé des applications compromises"}, {"id": 168, "category": "Containment & Mitigation", "en": "restricted malicious activity", "fr": "a restreint une activité malveillante"}, {"id": 169, "category": "Containment & Mitigation", "en": "prevented unauthorized data transfers", "fr": "a empêché des transferts de données non autorisés"}, {"id": 170, "category": "Containment & Mitigation", "en": "blocked suspicious DNS traffic", "fr": "a bloqué un trafic DNS suspect"}, {"id": 171, "category": "Remediation & Recovery", "en": "applied security patches", "fr": "a appliqué des correctifs de sécurité"}, {"id": 172, "category": "Remediation & Recovery", "en": "updated system configurations", "fr": "a mis à jour les configurations système"}, {"id": 173, "category": "Remediation & Recovery", "en": "removed malicious software", "fr": "a supprimé des logiciels malveillants"}, {"id": 174, "category": "Remediation & Recovery", "en": "restored affected systems", "fr": "a restauré les systèmes affectés"}, {"id": 175, "category": "Remediation & Recovery", "en": "reset compromised credentials", "fr": "a réinitialisé des identifiants compromis"}, {"id": 176, "category": "Remediation & Recovery", "en": "updated antivirus signatures", "fr": "a mis à jour les signatures antivirus"}, {"id": 177, "category": "Remediation & Recovery", "en": "strengthened system security controls", "fr": "a renforcé les contrôles de sécurité du système"}, {"id": 178, "category": "Remediation & Recovery", "en": "implemented additional monitoring", "fr": "a mis en place une surveillance supplémentaire"}, {"id": 179, "category": "Remediation & Recovery", "en": "restored system integrity", "fr": "a restauré l’intégrité du système"}, {"id": 180, "category": "Remediation & Recovery", "en": "reconfigured firewall rules", "fr": "a reconfiguré les règles du pare-feu"}, {"id": 181, "category": "Remediation & Recovery", "en": "removed unauthorized accounts", "fr": "a supprimé des comptes non autorisés"}, {"id": 182, "category": "Remediation & Recovery", "en": "patched vulnerable applications", "fr": "a corrigé des applications vulnérables"}, {"id": 183, "category": "Remediation & Recovery", "en": "deployed updated security policies", "fr": "a déployé des politiques de sécurité mises à jour"}, {"id": 184, "category": "Remediation & Recovery", "en": "reinstalled compromised systems", "fr": "a réinstallé des systèmes compromis"}, {"id": 185, "category": "Remediation & Recovery", "en": "hardened system configurations", "fr": "a renforcé les configurations système"}, {"id": 186, "category": "Remediation & Recovery", "en": "removed attacker persistence", "fr": "a supprimé la persistance de l’attaquant"}, {"id": 187, "category": "Remediation & Recovery", "en": "restored secure network operations", "fr": "a restauré des opérations réseau sécurisées"}, {"id": 188, "category": "Remediation & Recovery", "en": "updated intrusion detection rules", "fr": "a mis à jour les règles de détection d’intrusion"}, {"id": 189, "category": "Remediation & Recovery", "en": "reconfigured security settings", "fr": "a reconfiguré les paramètres de sécurité"}, {"id": 190, "category": "Remediation & Recovery", "en": "restored normal system behavior", "fr": "a restauré un comportement système normal"}, {"id": 191, "category": "Remediation & Recovery", "en": "enforced stronger authentication controls", "fr": "a imposé des contrôles d’authentification plus robustes"}, {"id": 192, "category": "Remediation & Recovery", "en": "implemented new security controls", "fr": "a mis en place de nouveaux contrôles de sécurité"}, {"id": 193, "category": "Remediation & Recovery", "en": "patched identified vulnerabilities", "fr": "a corrigé les vulnérabilités identifiées"}, {"id": 194, "category": "Remediation & Recovery", "en": "re-enabled secured services", "fr": "a réactivé des services sécurisés"}, {"id": 195, "category": "Remediation & Recovery", "en": "removed malicious scheduled tasks", "fr": "a supprimé des tâches planifiées malveillantes"}, {"id": 196, "category": "Remediation & Recovery", "en": "restored backup data", "fr": "a restauré les données de sauvegarde"}, {"id": 197, "category": "Remediation & Recovery", "en": "improved network segmentation", "fr": "a amélioré la segmentation réseau"}, {"id": 198, "category": "Remediation & Recovery", "en": "strengthened endpoint security", "fr": "a renforcé la sécurité des terminaux"}, {"id": 199, "category": "Remediation & Recovery", "en": "deployed new monitoring rules", "fr": "a déployé de nouvelles règles de surveillance"}, {"id": 200, "category": "Remediation & Recovery", "en": "restored system access controls", "fr": "a restauré les contrôles d’accès au système"}, {"id": 201, "category": "Remediation & Recovery", "en": "updated threat detection signatures", "fr": "a mis à jour les signatures de détection des menaces"}, {"id": 202, "category": "Remediation & Recovery", "en": "implemented improved access controls", "fr": "a mis en place des contrôles d’accès améliorés"}, {"id": 203, "category": "Remediation & Recovery", "en": "secured compromised accounts", "fr": "a sécurisé des comptes compromis"}, {"id": 204, "category": "Remediation & Recovery", "en": "enforced updated password policies", "fr": "a appliqué des politiques de mot de passe mises à jour"}, {"id": 205, "category": "Remediation & Recovery", "en": "removed unauthorized modifications", "fr": "a supprimé des modifications non autorisées"}, {"id": 206, "category": "Reporting & Documentation", "en": "documented the incident", "fr": "a documenté l’incident"}, {"id": 207, "category": "Reporting & Documentation", "en": "recorded investigation findings", "fr": "a consigné les constatations de l’enquête"}, {"id": 208, "category": "Reporting & Documentation", "en": "summarized security observations", "fr": "a résumé les observations de sécurité"}, {"id": 209, "category": "Reporting & Documentation", "en": "prepared incident report", "fr": "a préparé le rapport d’incident"}, {"id": 210, "category": "Reporting & Documentation", "en": "documented mitigation actions", "fr": "a documenté les actions d’atténuation"}, {"id": 211, "category": "Reporting & Documentation", "en": "recorded forensic evidence", "fr": "a consigné les preuves forensiques"}, {"id": 212, "category": "Reporting & Documentation", "en": "summarized investigation results", "fr": "a résumé les résultats de l’enquête"}, {"id": 213, "category": "Reporting & Documentation", "en": "documented attack timeline", "fr": "a documenté la chronologie de l’attaque"}, {"id": 214, "category": "Reporting & Documentation", "en": "recorded threat indicators", "fr": "a consigné des indicateurs de menace"}, {"id": 215, "category": "Reporting & Documentation", "en": "summarized threat intelligence", "fr": "a résumé le renseignement sur les menaces"}, {"id": 216, "category": "Reporting & Documentation", "en": "documented response actions", "fr": "a documenté les actions de réponse"}, {"id": 217, "category": "Reporting & Documentation", "en": "recorded incident details", "fr": "a consigné les détails de l’incident"}, {"id": 218, "category": "Reporting & Documentation", "en": "summarized security event", "fr": "a résumé l’événement de sécurité"}, {"id": 219, "category": "Reporting & Documentation", "en": "documented affected systems", "fr": "a documenté les systèmes affectés"}, {"id": 220, "category": "Reporting & Documentation", "en": "recorded attack techniques", "fr": "a consigné les techniques d’attaque"}, {"id": 221, "category": "Reporting & Documentation", "en": "summarized mitigation measures", "fr": "a résumé les mesures d’atténuation"}, {"id": 222, "category": "Reporting & Documentation", "en": "documented containment actions", "fr": "a documenté les actions de confinement"}, {"id": 223, "category": "Reporting & Documentation", "en": "recorded incident impact", "fr": "a consigné l’impact de l’incident"}, {"id": 224, "category": "Reporting & Documentation", "en": "summarized remediation steps", "fr": "a résumé les étapes de remédiation"}, {"id": 225, "category": "Reporting & Documentation", "en": "documented investigative procedures", "fr": "a documenté les procédures d’enquête"}, {"id": 226, "category": "Reporting & Documentation", "en": "recorded suspicious activity", "fr": "a consigné une activité suspecte"}, {"id": 227, "category": "Reporting & Documentation", "en": "summarized threat actor behavior", "fr": "a résumé le comportement de l’acteur de menace"}, {"id": 228, "category": "Reporting & Documentation", "en": "documented system changes", "fr": "a documenté les modifications du système"}, {"id": 229, "category": "Reporting & Documentation", "en": "recorded forensic artifacts", "fr": "a consigné des artefacts forensiques"}, {"id": 230, "category": "Reporting & Documentation", "en": "summarized investigation outcomes", "fr": "a résumé les résultats de l’enquête"}, {"id": 231, "category": "Reporting & Documentation", "en": "documented attacker techniques", "fr": "a documenté les techniques de l’attaquant"}, {"id": 232, "category": "Reporting & Documentation", "en": "recorded malicious indicators", "fr": "a consigné des indicateurs malveillants"}, {"id": 233, "category": "Reporting & Documentation", "en": "summarized security posture improvements", "fr": "a résumé les améliorations de la posture de sécurité"}, {"id": 234, "category": "Reporting & Documentation", "en": "documented system recovery actions", "fr": "a documenté les actions de rétablissement du système"}, {"id": 235, "category": "Reporting & Documentation", "en": "recorded threat analysis results", "fr": "a consigné les résultats de l’analyse des menaces"}, {"id": 236, "category": "Reporting & Documentation", "en": "summarized key findings", "fr": "a résumé les principales constatations"}, {"id": 237, "category": "Reporting & Documentation", "en": "documented risk assessment", "fr": "a documenté l’évaluation des risques"}, {"id": 238, "category": "Reporting & Documentation", "en": "recorded evidence collection", "fr": "a consigné la collecte des preuves"}, {"id": 239, "category": "Reporting & Documentation", "en": "summarized analyst conclusions", "fr": "a résumé les conclusions de l’analyste"}, {"id": 240, "category": "Reporting & Documentation", "en": "documented incident resolution", "fr": "a documenté la résolution de l’incident"}, {"id": 241, "category": "Risk Assessment & Recommendations", "en": "assessed security risks", "fr": "a évalué les risques de sécurité"}, {"id": 242, "category": "Risk Assessment & Recommendations", "en": "evaluated potential impact", "fr": "a évalué l’impact potentiel"}, {"id": 243, "category": "Risk Assessment & Recommendations", "en": "assessed system vulnerabilities", "fr": "a évalué les vulnérabilités du système"}, {"id": 244, "category": "Risk Assessment & Recommendations", "en": "evaluated threat exposure", "fr": "a évalué l’exposition aux menaces"}, {"id": 245, "category": "Risk Assessment & Recommendations", "en": "assessed potential compromise", "fr": "a évalué une compromission potentielle"}, {"id": 246, "category": "Risk Assessment & Recommendations", "en": "evaluated attack severity", "fr": "a évalué la gravité de l’attaque"}, {"id": 247, "category": "Risk Assessment & Recommendations", "en": "assessed operational impact", "fr": "a évalué l’impact opérationnel"}, {"id": 248, "category": "Risk Assessment & Recommendations", "en": "evaluated threat likelihood", "fr": "a évalué la probabilité de la menace"}, {"id": 249, "category": "Risk Assessment & Recommendations", "en": "assessed system integrity risks", "fr": "a évalué les risques liés à l’intégrité du système"}, {"id": 250, "category": "Risk Assessment & Recommendations", "en": "evaluated network exposure", "fr": "a évalué l’exposition du réseau"}, {"id": 251, "category": "Risk Assessment & Recommendations", "en": "assessed attacker capabilities", "fr": "a évalué les capacités de l’attaquant"}, {"id": 252, "category": "Risk Assessment & Recommendations", "en": "evaluated defensive weaknesses", "fr": "a évalué les faiblesses défensives"}, {"id": 253, "category": "Risk Assessment & Recommendations", "en": "assessed potential damage", "fr": "a évalué les dommages potentiels"}, {"id": 254, "category": "Risk Assessment & Recommendations", "en": "evaluated system resilience", "fr": "a évalué la résilience du système"}, {"id": 255, "category": "Risk Assessment & Recommendations", "en": "assessed threat actor intent", "fr": "a évalué l’intention de l’acteur de menace"}, {"id": 256, "category": "Risk Assessment & Recommendations", "en": "evaluated incident severity", "fr": "a évalué la sévérité de l’incident"}, {"id": 257, "category": "Risk Assessment & Recommendations", "en": "assessed attack complexity", "fr": "a évalué la complexité de l’attaque"}, {"id": 258, "category": "Risk Assessment & Recommendations", "en": "evaluated defensive posture", "fr": "a évalué la posture défensive"}, {"id": 259, "category": "Risk Assessment & Recommendations", "en": "assessed security gaps", "fr": "a évalué les lacunes de sécurité"}, {"id": 260, "category": "Risk Assessment & Recommendations", "en": "evaluated system defenses", "fr": "a évalué les défenses du système"}, {"id": 261, "category": "Risk Assessment & Recommendations", "en": "recommended security improvements", "fr": "a recommandé des améliorations de sécurité"}, {"id": 262, "category": "Risk Assessment & Recommendations", "en": "recommended patch deployment", "fr": "a recommandé le déploiement de correctifs"}, {"id": 263, "category": "Risk Assessment & Recommendations", "en": "recommended stronger authentication", "fr": "a recommandé une authentification plus robuste"}, {"id": 264, "category": "Risk Assessment & Recommendations", "en": "recommended system hardening", "fr": "a recommandé le durcissement du système"}, {"id": 265, "category": "Risk Assessment & Recommendations", "en": "recommended network segmentation", "fr": "a recommandé la segmentation du réseau"}, {"id": 266, "category": "Risk Assessment & Recommendations", "en": "recommended security monitoring enhancements", "fr": "a recommandé des améliorations de la surveillance de sécurité"}, {"id": 267, "category": "Risk Assessment & Recommendations", "en": "recommended improved access controls", "fr": "a recommandé des contrôles d’accès améliorés"}, {"id": 268, "category": "Risk Assessment & Recommendations", "en": "recommended incident response improvements", "fr": "a recommandé des améliorations de la réponse aux incidents"}, {"id": 269, "category": "Risk Assessment & Recommendations", "en": "recommended threat intelligence monitoring", "fr": "a recommandé une surveillance du renseignement sur les menaces"}, {"id": 270, "category": "Risk Assessment & Recommendations", "en": "recommended vulnerability remediation", "fr": "a recommandé la remédiation des vulnérabilités"}, {"id": 271, "category": "Threat Intelligence & Attribution", "en": "identified threat actor infrastructure", "fr": "a identifié l’infrastructure de l’acteur de menace"}, {"id": 272, "category": "Threat Intelligence & Attribution", "en": "attributed activity to known malware family", "fr": "a attribué l’activité à une famille de logiciels malveillants connue"}, {"id": 273, "category": "Threat Intelligence & Attribution", "en": "linked attack to threat campaign", "fr": "a relié l’attaque à une campagne de menace"}, {"id": 274, "category": "Threat Intelligence & Attribution", "en": "correlated indicators with threat intelligence", "fr": "a corrélé des indicateurs avec le renseignement sur les menaces"}, {"id": 275, "category": "Threat Intelligence & Attribution", "en": "identified attacker tactics", "fr": "a identifié les tactiques de l’attaquant"}, {"id": 276, "category": "Threat Intelligence & Attribution", "en": "matched indicators to known threats", "fr": "a associé des indicateurs à des menaces connues"}, {"id": 277, "category": "Threat Intelligence & Attribution", "en": "correlated attack techniques with MITRE ATT&CK", "fr": "a corrélé des techniques d’attaque avec MITRE ATT&CK"}, {"id": 278, "category": "Threat Intelligence & Attribution", "en": "identified attacker command infrastructure", "fr": "a identifié l’infrastructure de commande de l’attaquant"}, {"id": 279, "category": "Threat Intelligence & Attribution", "en": "matched malicious IP with threat database", "fr": "a associé une IP malveillante à une base de données de menaces"}, {"id": 280, "category": "Threat Intelligence & Attribution", "en": "correlated domain with phishing campaign", "fr": "a corrélé un domaine avec une campagne de phishing"}, {"id": 281, "category": "Threat Intelligence & Attribution", "en": "identified malware family characteristics", "fr": "a identifié les caractéristiques d’une famille de logiciels malveillants"}, {"id": 282, "category": "Threat Intelligence & Attribution", "en": "linked activity to known adversary group", "fr": "a relié l’activité à un groupe adverse connu"}, {"id": 283, "category": "Threat Intelligence & Attribution", "en": "correlated malicious behavior patterns", "fr": "a corrélé des schémas de comportement malveillant"}, {"id": 284, "category": "Threat Intelligence & Attribution", "en": "identified attacker persistence techniques", "fr": "a identifié les techniques de persistance de l’attaquant"}, {"id": 285, "category": "Threat Intelligence & Attribution", "en": "matched attack patterns with known exploits", "fr": "a associé des schémas d’attaque à des exploits connus"}, {"id": 286, "category": "Threat Intelligence & Attribution", "en": "correlated suspicious domains with threat feeds", "fr": "a corrélé des domaines suspects avec des flux de menaces"}, {"id": 287, "category": "Threat Intelligence & Attribution", "en": "identified attacker lateral movement techniques", "fr": "a identifié les techniques de déplacement latéral de l’attaquant"}, {"id": 288, "category": "Threat Intelligence & Attribution", "en": "matched malicious traffic signatures", "fr": "a associé des signatures de trafic malveillant"}, {"id": 289, "category": "Threat Intelligence & Attribution", "en": "correlated indicators with previous incidents", "fr": "a corrélé des indicateurs avec des incidents précédents"}, {"id": 290, "category": "Threat Intelligence & Attribution", "en": "identified attacker reconnaissance techniques", "fr": "a identifié les techniques de reconnaissance de l’attaquant"}, {"id": 291, "category": "Threat Intelligence & Attribution", "en": "linked malicious activity to phishing campaign", "fr": "a relié une activité malveillante à une campagne de phishing"}, {"id": 292, "category": "Threat Intelligence & Attribution", "en": "correlated malicious payload with known malware", "fr": "a corrélé une charge utile malveillante avec un malware connu"}, {"id": 293, "category": "Threat Intelligence & Attribution", "en": "identified threat campaign patterns", "fr": "a identifié des schémas de campagne de menace"}, {"id": 294, "category": "Threat Intelligence & Attribution", "en": "matched attacker behavior with known TTPs", "fr": "a associé le comportement de l’attaquant à des TTP connus"}, {"id": 295, "category": "Threat Intelligence & Attribution", "en": "correlated malware indicators with threat feeds", "fr": "a corrélé des indicateurs de malware avec des flux de menaces"}, {"id": 296, "category": "Threat Intelligence & Attribution", "en": "identified malicious infrastructure", "fr": "a identifié une infrastructure malveillante"}, {"id": 297, "category": "Threat Intelligence & Attribution", "en": "linked indicators to known threat actors", "fr": "a relié des indicateurs à des acteurs de menace connus"}, {"id": 298, "category": "Threat Intelligence & Attribution", "en": "correlated suspicious activity with known exploits", "fr": "a corrélé une activité suspecte avec des exploits connus"}, {"id": 299, "category": "Threat Intelligence & Attribution", "en": "identified threat intelligence indicators", "fr": "a identifié des indicateurs de renseignement sur les menaces"}, {"id": 300, "category": "Threat Intelligence & Attribution", "en": "matched attack patterns with MITRE techniques", "fr": "a associé des schémas d’attaque à des techniques MITRE"}];
+  const I18N = {"appTitle": {"en": "SOC Report Lexicon", "fr": "Lexique des rapports SOC"}, "tagline": {"en": "Learn 300 reporting phrases in English and French", "fr": "Apprenez 300 formulations de rapport en anglais et en français"}, "search": {"en": "Search phrases", "fr": "Rechercher des formulations"}, "allCategories": {"en": "All categories", "fr": "Toutes les catégories"}, "allModes": {"en": "All modes", "fr": "Tous les modes"}, "browse": {"en": "Browse", "fr": "Parcourir"}, "flashcards": {"en": "Flashcards", "fr": "Cartes mémoire"}, "quiz": {"en": "Quiz", "fr": "Quiz"}, "exam": {"en": "Offline Exam", "fr": "Examen hors ligne"}, "writing": {"en": "Writing Practice", "fr": "Pratique de rédaction"}, "review": {"en": "Weak Phrase Review", "fr": "Révision des phrases faibles"}, "notes": {"en": "Notes", "fr": "Notes"}, "stats": {"en": "Progress", "fr": "Progrès"}, "language": {"en": "Language", "fr": "Langue"}, "speak": {"en": "Speak", "fr": "Lecture audio"}, "install": {"en": "Install app", "fr": "Installer l’application"}, "daily": {"en": "Daily 10", "fr": "Les 10 du jour"}, "showAnswer": {"en": "Show answer", "fr": "Afficher la réponse"}, "next": {"en": "Next", "fr": "Suivant"}, "prev": {"en": "Previous", "fr": "Précédent"}, "markEasy": {"en": "Easy", "fr": "Facile"}, "markHard": {"en": "Hard", "fr": "Difficile"}, "newQuiz": {"en": "New quiz", "fr": "Nouveau quiz"}, "correct": {"en": "Correct", "fr": "Correct"}, "wrong": {"en": "Wrong", "fr": "Incorrect"}, "startExam": {"en": "Start exam", "fr": "Commencer l’examen"}, "questionCount": {"en": "Questions", "fr": "Questions"}, "submit": {"en": "Submit", "fr": "Soumettre"}, "certificate": {"en": "Download certificate", "fr": "Télécharger le certificat"}, "resetProgress": {"en": "Reset progress", "fr": "Réinitialiser le progrès"}, "exportNotes": {"en": "Export notes", "fr": "Exporter les notes"}, "saveNotes": {"en": "Save notes", "fr": "Enregistrer les notes"}, "reportPrompt": {"en": "Turn these phrases into a short SOC report paragraph:", "fr": "Transformez ces formulations en un court paragraphe de rapport SOC :"}, "selfCheck": {"en": "Self-check rubric", "fr": "Grille d’autoévaluation"}, "rubric1": {"en": "Included detection, investigation, impact, and response", "fr": "Inclut détection, enquête, impact et réponse"}, "rubric2": {"en": "Uses professional verbs from the lexicon", "fr": "Utilise des verbes professionnels du lexique"}, "rubric3": {"en": "Clear, concise, chronological writing", "fr": "Rédaction claire, concise et chronologique"}, "weakIntro": {"en": "These phrases were marked hard or missed in quizzes.", "fr": "Ces formulations ont été marquées difficiles ou ratées dans les quiz."}, "scoreHistory": {"en": "Score history", "fr": "Historique des scores"}, "studied": {"en": "Phrases studied", "fr": "Formulations étudiées"}, "mastered": {"en": "Mastered", "fr": "Maîtrisées"}, "weakCount": {"en": "Weak phrases", "fr": "Phrases faibles"}, "dailyDone": {"en": "Daily set completed", "fr": "Série du jour terminée"}, "emptyWeak": {"en": "No weak phrases yet. Mark difficult phrases to build a review set.", "fr": "Aucune phrase faible pour le moment. Marquez les phrases difficiles pour créer un ensemble de révision."}, "notesPlaceholder": {"en": "Write your own incident-report notes here...", "fr": "Écrivez ici vos propres notes de rapport d’incident..."}, "footer": {"en": "Offline PWA for easy SOC analyst learning", "fr": "PWA hors ligne pour apprendre facilement le rôle d’analyste SOC"}};
+  const STORAGE_KEY = 'socLexiconBilingualV2';
+  let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  state.lang ||= 'en';
+  state.theme ||= 'dark';
+  state.progress ||= {};
+  state.notes ||= '';
+  state.history ||= [];
+  state.dailyDate ||= '';
+  state.dailyIds ||= [];
+  state.dailyDoneIds ||= [];
+  state.speech ||= false;
+  let currentTab = 'browse';
+  let deferredPrompt = null;
+  let flashIndex = 0;
+  let quizSet = [];
+  let quizIndex = 0;
+  let quizScore = 0;
+  let examSet = [];
+  let examIndex = 0;
+  let examScore = 0;
+  let examComplete = false;
+  let currentWriting = [];
+  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function t(key) { return (I18N[key] && I18N[key][state.lang]) || key; }
+  function phraseText(p) { return state.lang === 'fr' ? p.fr : p.en; }
+  function pairedText(p) { return state.lang === 'fr' ? p.en : p.fr; }
+  function ensureProgress(id) {
+    state.progress[id] ||= { seen:0, correct:0, wrong:0, hard:0, mastered:false };
+    return state.progress[id];
+  }
+  function markSeen(id) { const p = ensureProgress(id); p.seen += 1; saveState(); }
+  function speak(text) {
+    if (!state.speech || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = state.lang === 'fr' ? 'fr-CA' : 'en-CA';
+    speechSynthesis.speak(u);
+  }
+  function filteredPhrases() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const cat = document.getElementById('categorySelect').value;
+    const mode = document.getElementById('modeFilter').value;
+    return PHRASES.filter(p => {
+      const pr = ensureProgress(p.id);
+      const textMatch = (p.en + ' ' + p.fr + ' ' + p.category).toLowerCase().includes(q);
+      const catMatch = cat === 'all' || p.category === cat;
+      let modeMatch = true;
+      if (mode === 'new') modeMatch = pr.seen === 0;
+      if (mode === 'weak') modeMatch = (pr.hard + pr.wrong) > 0 && !pr.mastered;
+      if (mode === 'mastered') modeMatch = pr.mastered;
+      return textMatch && catMatch && modeMatch;
+    });
+  }
+  function updateTopText() {
+    document.getElementById('appTitle').textContent = t('appTitle');
+    document.getElementById('tagline').textContent = t('tagline');
+    document.getElementById('searchInput').placeholder = t('search');
+    document.getElementById('dailyBtn').textContent = t('daily');
+    document.getElementById('speakBtn').textContent = state.speech ? '🔊' : '🔈';
+    document.getElementById('installBtn').textContent = t('install');
+    document.querySelector('[data-tab="browse"]').textContent = t('browse');
+    document.querySelector('[data-tab="flashcards"]').textContent = t('flashcards');
+    document.querySelector('[data-tab="quiz"]').textContent = t('quiz');
+    document.querySelector('[data-tab="exam"]').textContent = t('exam');
+    document.querySelector('[data-tab="writing"]').textContent = t('writing');
+    document.querySelector('[data-tab="review"]').textContent = t('review');
+    document.querySelector('[data-tab="notes"]').textContent = t('notes');
+    document.querySelector('[data-tab="stats"]').textContent = t('stats');
+    document.getElementById('scoreHistoryLabel').textContent = t('scoreHistory');
+    document.getElementById('resetProgressBtn').textContent = t('resetProgress');
+    document.getElementById('studiedLabel').textContent = t('studied');
+    document.getElementById('masteredLabel').textContent = t('mastered');
+    document.getElementById('weakCountLabel').textContent = t('weakCount');
+    document.getElementById('footerText').textContent = t('footer');
+  }
+  function populateFilters() {
+    const categories = [...new Set(PHRASES.map(p => p.category))];
+    const select = document.getElementById('categorySelect');
+    const current = select.value || 'all';
+    select.innerHTML = `<option value="all">${t('allCategories')}</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    select.value = categories.includes(current) || current === 'all' ? current : 'all';
+    const mode = document.getElementById('modeFilter');
+    mode.options[0].text = t('allModes');
+    mode.options[1].text = state.lang==='fr' ? 'Nouvelles' : 'New';
+    mode.options[2].text = state.lang==='fr' ? 'Faibles' : 'Weak';
+    mode.options[3].text = state.lang==='fr' ? 'Maîtrisées' : 'Mastered';
+  }
+  function renderHistory() {
+    const box = document.getElementById('historyList');
+    if (!state.history.length) {
+      box.innerHTML = `<div class="muted">—</div>`;
+      return;
+    }
+    box.innerHTML = state.history.slice(-8).reverse().map(h => `<div class="historyItem"><span>${h.label}</span><strong>${h.score}%</strong></div>`).join('');
+  }
+  function refreshCounters() {
+    let studied=0, mastered=0, weak=0;
+    PHRASES.forEach(p => {
+      const pr = ensureProgress(p.id);
+      if (pr.seen>0) studied++;
+      if (pr.mastered) mastered++;
+      if ((pr.hard + pr.wrong) > 0 && !pr.mastered) weak++;
+    });
+    document.getElementById('studiedCount').textContent = studied;
+    document.getElementById('masteredCount').textContent = mastered;
+    document.getElementById('weakCount').textContent = weak;
+    document.getElementById('dailyCount').textContent = `${completedDailyCount()}/10`;
+  }
+  function renderBrowse(list = filteredPhrases()) {
+    const main = document.getElementById('mainPanel');
+    main.innerHTML = `<div class="row" style="justify-content:space-between; margin-bottom:12px;"><strong>${t('browse')}</strong><span class="badge">${list.length} / ${PHRASES.length}</span></div>` +
+      list.map(p => {
+        const pr = ensureProgress(p.id);
+        return `<div class="phrase">
+          <div class="row"><span class="badge">${p.id}</span><span class="badge">${p.category}</span>${pr.mastered ? '<span class="badge">✔</span>' : ''}</div>
+          <div style="font-size:1.08rem; font-weight:700; margin-top:8px;">${phraseText(p)}</div>
+          <div class="muted" style="margin-top:6px;">${pairedText(p)}</div>
+          <div class="actions">
+            <button onclick="studyPhrase(${p.id}, false)">${state.lang==='fr' ? 'Étudier' : 'Study'}</button>
+            <button onclick="toggleMastered(${p.id})">${pr.mastered ? (state.lang==='fr'?'Retirer maîtrise':'Unmaster') : (state.lang==='fr'?'Marquer maîtrisée':'Mark mastered')}</button>
+            <button onclick="markHard(${p.id})">${t('markHard')}</button>
+          </div>
+        </div>`;
+      }).join('');
+  }
+  function studyPhrase(id, speakNow=true) {
+    const p = PHRASES.find(x=>x.id===id);
+    markSeen(id);
+    if (speakNow) speak(phraseText(p));
+    flashIndex = Math.max(0, filteredPhrases().findIndex(x=>x.id===id));
+    currentTab = 'flashcards'; activateTab();
+  }
+  function toggleMastered(id) {
+    const pr = ensureProgress(id);
+    pr.mastered = !pr.mastered;
+    if (pr.mastered) pr.hard = 0;
+    saveState(); render(); 
+  }
+  function markHard(id) {
+    const pr = ensureProgress(id);
+    pr.hard += 1; pr.mastered = false; saveState(); render();
+  }
+  function renderFlashcards() {
+    const list = filteredPhrases();
+    const main = document.getElementById('mainPanel');
+    if (!list.length) { main.innerHTML = `<div class="card center muted">No phrases found.</div>`; return; }
+    if (flashIndex >= list.length) flashIndex = 0;
+    const p = list[flashIndex];
+    markSeen(p.id);
+    main.innerHTML = `<div class="card flash">
+      <div class="badge">${p.category}</div>
+      <div class="big" style="margin:18px 0;">${phraseText(p)}</div>
+      <div id="flashAnswer" class="muted hidden">${pairedText(p)}</div>
+      <div class="actions" style="justify-content:center;">
+        <button onclick="toggleAnswer()">${t('showAnswer')}</button>
+        <button onclick="prevFlash()">${t('prev')}</button>
+        <button onclick="nextFlash()" class="primary">${t('next')}</button>
+      </div>
+      <div class="actions" style="justify-content:center;">
+        <button onclick="markEasyCurrent()">${t('markEasy')}</button>
+        <button onclick="markHard(${p.id})">${t('markHard')}</button>
+      </div>
+    </div>`;
+    speak(phraseText(p));
+  }
+  function toggleAnswer() { document.getElementById('flashAnswer').classList.toggle('hidden'); }
+  function prevFlash() { flashIndex = (flashIndex - 1 + filteredPhrases().length) % filteredPhrases().length; renderFlashcards(); }
+  function nextFlash() { flashIndex = (flashIndex + 1) % filteredPhrases().length; renderFlashcards(); }
+  function markEasyCurrent() {
+    const p = filteredPhrases()[flashIndex]; const pr = ensureProgress(p.id); pr.correct += 1; if (pr.correct >= 2) pr.mastered = true; saveState(); renderFlashcards(); refreshCounters(); renderHistory();
+  }
+  function pickRandom(arr, n) {
+    const copy = [...arr];
+    const out = [];
+    while(copy.length && out.length < n) out.push(copy.splice(Math.floor(Math.random()*copy.length),1)[0]);
+    return out;
+  }
+  function startQuiz(fromWeak=false) {
+    let base = fromWeak ? PHRASES.filter(p => (ensureProgress(p.id).hard + ensureProgress(p.id).wrong) > 0 && !ensureProgress(p.id).mastered) : filteredPhrases();
+    if (!base.length) base = PHRASES;
+    quizSet = pickRandom(base, Math.min(10, base.length));
+    quizIndex = 0; quizScore = 0;
+    renderQuiz();
+  }
+  function renderQuiz() {
+    const main = document.getElementById('mainPanel');
+    if (!quizSet.length) { startQuiz(false); return; }
+    if (quizIndex >= quizSet.length) {
+      const pct = Math.round((quizScore/quizSet.length)*100);
+      state.history.push({ label: t('quiz'), score:pct, time:Date.now() });
+      saveState(); renderHistory();
+      main.innerHTML = `<div class="card center"><h2>${t('quiz')}</h2><p>${pct}%</p><button class="primary" onclick="startQuiz(false)">${t('newQuiz')}</button></div>`;
+      return;
+    }
+    const q = quizSet[quizIndex];
+    markSeen(q.id);
+    const correct = state.lang === 'fr' ? q.fr : q.en;
+    const pool = pickRandom(PHRASES.filter(p=>p.id!==q.id), 3);
+    const options = pickRandom([correct, ...pool.map(p => state.lang === 'fr' ? p.fr : p.en)], 4);
+    main.innerHTML = `<div class="card">
+      <div class="row" style="justify-content:space-between;"><strong>${t('quiz')}</strong><span class="badge">${quizIndex+1} / ${quizSet.length}</span></div>
+      <div class="question">${state.lang === 'fr' ? q.en : q.fr}</div>
+      <div class="options">
+        ${options.map(opt => `<button onclick='answerQuiz(${JSON.stringify(opt)}, ${JSON.stringify(correct)}, ${q.id})'>${opt}</button>`).join('')}
+      </div>
+    </div>`;
+    speak(state.lang === 'fr' ? q.en : q.fr);
+  }
+  function answerQuiz(choice, correct, id) {
+    const pr = ensureProgress(id);
+    if (choice === correct) { quizScore++; pr.correct += 1; if (pr.correct >= 3) pr.mastered = true; }
+    else { pr.wrong += 1; pr.mastered = false; }
+    saveState(); quizIndex++; renderQuiz(); refreshCounters();
+  }
+  function startExam() {
+    const count = parseInt(document.getElementById('examCount').value || '15', 10);
+    examSet = pickRandom(PHRASES, Math.min(count, PHRASES.length));
+    examIndex = 0; examScore = 0; examComplete = false;
+    renderExam();
+  }
+  function renderExam() {
+    const main = document.getElementById('mainPanel');
+    if (!examSet.length || examComplete) {
+      if (!examSet.length) {
+        main.innerHTML = `<div class="card">
+          <h2>${t('exam')}</h2>
+          <div class="row"><label>${t('questionCount')}</label><select id="examCount" style="width:auto;"><option>15</option><option>25</option><option>40</option></select></div>
+          <button class="primary" onclick="startExam()">${t('startExam')}</button>
+        </div>`;
+      } else {
+        const pct = Math.round((examScore/examSet.length)*100);
+        state.history.push({ label: t('exam'), score:pct, time:Date.now() });
+        saveState(); renderHistory();
+        main.innerHTML = `<div class="card center">
+          <h2>${t('exam')}</h2>
+          <p>${pct}%</p>
+          <canvas id="certCanvas" width="1000" height="700"></canvas>
+          <div class="actions" style="justify-content:center; margin-top:12px;">
+            <button class="secondary" onclick="downloadCertificate()">${t('certificate')}</button>
+            <button class="primary" onclick="startExam()">${state.lang==='fr'?'Recommencer':'Restart'}</button>
+          </div>
+        </div>`;
+        drawCertificate(pct);
+      }
+      return;
+    }
+    const q = examSet[examIndex];
+    const correct = state.lang === 'fr' ? q.fr : q.en;
+    const pool = pickRandom(PHRASES.filter(p=>p.id!==q.id), 3);
+    const options = pickRandom([correct, ...pool.map(p => state.lang === 'fr' ? p.fr : p.en)], 4);
+    main.innerHTML = `<div class="card">
+      <div class="row" style="justify-content:space-between;"><strong>${t('exam')}</strong><span class="badge">${examIndex+1} / ${examSet.length}</span></div>
+      <div class="question">${state.lang === 'fr' ? q.en : q.fr}</div>
+      <div class="options">
+        ${options.map(opt => `<button onclick='answerExam(${JSON.stringify(opt)}, ${JSON.stringify(correct)}, ${q.id})'>${opt}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+  function answerExam(choice, correct, id) {
+    const pr = ensureProgress(id);
+    if (choice === correct) { examScore++; pr.correct += 1; if (pr.correct >= 4) pr.mastered = true; }
+    else { pr.wrong += 1; pr.mastered = false; }
+    saveState(); refreshCounters(); examIndex++; if (examIndex >= examSet.length) examComplete = true; renderExam();
+  }
+  function drawCertificate(score) {
+    const c = document.getElementById('certCanvas'); if (!c) return;
+    const x = c.getContext('2d');
+    x.fillStyle = '#ffffff'; x.fillRect(0,0,c.width,c.height);
+    x.strokeStyle = '#1d4ed8'; x.lineWidth = 12; x.strokeRect(24,24,c.width-48,c.height-48);
+    x.fillStyle = '#0f172a'; x.font = 'bold 48px Arial'; x.textAlign = 'center';
+    x.fillText(state.lang==='fr' ? 'Certificat de réussite' : 'Certificate of Completion', c.width/2, 140);
+    x.font = '28px Arial';
+    x.fillText(state.lang==='fr' ? 'Application Lexique des rapports SOC' : 'SOC Report Lexicon App', c.width/2, 210);
+    x.font = 'bold 34px Arial';
+    x.fillText(state.lang==='fr' ? 'Score final : ' + score + '%' : 'Final Score: ' + score + '%', c.width/2, 330);
+    x.font = '24px Arial';
+    const date = new Date().toLocaleDateString(state.lang==='fr' ? 'fr-CA' : 'en-CA');
+    x.fillText((state.lang==='fr' ? 'Date : ' : 'Date: ') + date, c.width/2, 390);
+    x.fillText(state.lang==='fr' ? 'Études hors ligne terminées avec succès' : 'Offline study successfully completed', c.width/2, 450);
+  }
+  function downloadCertificate() {
+    const c = document.getElementById('certCanvas');
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/png');
+    a.download = 'soc-certificate.png';
+    a.click();
+  }
+  function renderWriting() {
+    const main = document.getElementById('mainPanel');
+    if (!currentWriting.length) currentWriting = pickRandom(PHRASES, 4);
+    main.innerHTML = `<div class="card">
+      <strong>${t('writing')}</strong>
+      <p>${t('reportPrompt')}</p>
+      <ul>${currentWriting.map(p => `<li>${phraseText(p)}</li>`).join('')}</ul>
+      <textarea id="writingBox" rows="9" placeholder="${state.lang==='fr' ? 'Rédigez ici votre paragraphe...' : 'Write your paragraph here...'}"></textarea>
+      <div class="actions">
+        <button onclick="scoreWriting()">${t('submit')}</button>
+        <button onclick="newWritingSet()">${state.lang==='fr' ? 'Nouveau sujet' : 'New prompt'}</button>
+      </div>
+      <div id="writingFeedback" class="panel" style="margin-top:12px;">
+        <strong>${t('selfCheck')}</strong>
+        <ul>
+          <li>${t('rubric1')}</li>
+          <li>${t('rubric2')}</li>
+          <li>${t('rubric3')}</li>
+        </ul>
+      </div>
+    </div>`;
+  }
+  function newWritingSet() { currentWriting = pickRandom(PHRASES, 4); renderWriting(); }
+  function scoreWriting() {
+    const text = (document.getElementById('writingBox').value || '').toLowerCase();
+    let score = 0;
+    const hits = currentWriting.filter(p => text.includes(p.en.toLowerCase()) || text.includes(p.fr.toLowerCase()));
+    if (hits.length >= 2) score += 40;
+    if (/detect|investig|impact|response|détect|enquêt|impact|réponse/.test(text)) score += 30;
+    if (text.split(/\s+/).length >= 50) score += 20;
+    if (/[\.,;]/.test(text)) score += 10;
+    document.getElementById('writingFeedback').innerHTML = `<strong>${t('selfCheck')}</strong><p>${state.lang==='fr' ? 'Score estimé' : 'Estimated score'}: <strong>${score}/100</strong></p><p>${state.lang==='fr' ? 'Formulations utilisées' : 'Phrases used'}: ${hits.length} / ${currentWriting.length}</p><p>${state.lang==='fr' ? 'Conseil' : 'Tip'}: ${state.lang==='fr' ? 'Essayez de présenter les faits dans l’ordre : détection, enquête, impact, réponse.' : 'Present facts in order: detection, investigation, impact, response.'}</p>`;
+  }
+  function completedDailyCount() {
+    const today = new Date().toISOString().slice(0,10);
+    if (state.dailyDate !== today) return 0;
+    return state.dailyDoneIds.length;
+  }
+  function buildDailySet() {
+    const today = new Date().toISOString().slice(0,10);
+    if (state.dailyDate !== today) {
+      state.dailyDate = today;
+      state.dailyIds = pickRandom(PHRASES, 10).map(p=>p.id);
+      state.dailyDoneIds = [];
+      saveState();
+    }
+  }
+  function openDaily() {
+    buildDailySet();
+    document.getElementById('searchInput').value = '';
+    document.getElementById('categorySelect').value = 'all';
+    document.getElementById('modeFilter').value = 'all';
+    const list = PHRASES.filter(p => state.dailyIds.includes(p.id));
+    currentTab='browse'; activateTab(); renderBrowse(list);
+  }
+  function renderReview() {
+    const main = document.getElementById('mainPanel');
+    const weak = PHRASES.filter(p => (ensureProgress(p.id).hard + ensureProgress(p.id).wrong) > 0 && !ensureProgress(p.id).mastered);
+    if (!weak.length) {
+      main.innerHTML = `<div class="card"><strong>${t('review')}</strong><p>${t('emptyWeak')}</p></div>`;
+      return;
+    }
+    main.innerHTML = `<div class="card">
+      <strong>${t('review')}</strong>
+      <p>${t('weakIntro')}</p>
+      <div class="actions"><button class="primary" onclick="startQuiz(true)">${state.lang==='fr' ? 'Quiz des phrases faibles' : 'Weak phrase quiz'}</button></div>
+      ${weak.slice(0,25).map(p => `<div class="phrase"><div style="font-weight:700;">${phraseText(p)}</div><div class="muted">${pairedText(p)}</div></div>`).join('')}
+    </div>`;
+  }
+  function renderNotes() {
+    const main = document.getElementById('mainPanel');
+    main.innerHTML = `<div class="card">
+      <strong>${t('notes')}</strong>
+      <textarea id="notesBox" rows="14" placeholder="${t('notesPlaceholder')}">${state.notes || ''}</textarea>
+      <div class="actions">
+        <button onclick="saveNotes()">${t('saveNotes')}</button>
+        <button onclick="exportNotes()">${t('exportNotes')}</button>
+      </div>
+    </div>`;
+  }
+  function saveNotes() { state.notes = document.getElementById('notesBox').value; saveState(); }
+  function exportNotes() {
+    saveNotes();
+    const blob = new Blob([state.notes], {type:'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'soc-notes.txt';
+    a.click();
+  }
+  function renderStats() {
+    const studied = PHRASES.filter(p=>ensureProgress(p.id).seen>0).length;
+    const mastered = PHRASES.filter(p=>ensureProgress(p.id).mastered).length;
+    const weak = PHRASES.filter(p=>(ensureProgress(p.id).hard + ensureProgress(p.id).wrong) > 0 && !ensureProgress(p.id).mastered).length;
+    const main = document.getElementById('mainPanel');
+    main.innerHTML = `<div class="card">
+      <h2>${t('stats')}</h2>
+      <p>${t('studied')}: <strong>${studied}</strong> / ${PHRASES.length}</p>
+      <div class="progressbar"><div style="width:${(studied/PHRASES.length)*100}%"></div></div>
+      <p>${t('mastered')}: <strong>${mastered}</strong> / ${PHRASES.length}</p>
+      <div class="progressbar"><div style="width:${(mastered/PHRASES.length)*100}%"></div></div>
+      <p>${t('weakCount')}: <strong>${weak}</strong></p>
+      <p>${t('dailyDone')}: <strong>${completedDailyCount()} / 10</strong></p>
+    </div>`;
+  }
+  function render() {
+    document.body.className = state.theme === 'light' ? 'light' : '';
+    document.getElementById('langSelect').value = state.lang;
+    updateTopText(); populateFilters(); renderHistory(); refreshCounters();
+    if (currentTab === 'browse') renderBrowse();
+    if (currentTab === 'flashcards') renderFlashcards();
+    if (currentTab === 'quiz') renderQuiz();
+    if (currentTab === 'exam') renderExam();
+    if (currentTab === 'writing') renderWriting();
+    if (currentTab === 'review') renderReview();
+    if (currentTab === 'notes') renderNotes();
+    if (currentTab === 'stats') renderStats();
+  }
+  function activateTab() {
+    document.querySelectorAll('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab===currentTab));
+    render();
+  }
+
+  document.getElementById('langSelect').addEventListener('change', e => { state.lang = e.target.value; saveState(); render(); });
+  document.getElementById('themeBtn').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; saveState(); render(); });
+  document.getElementById('searchInput').addEventListener('input', () => renderBrowse());
+  document.getElementById('categorySelect').addEventListener('change', () => renderBrowse());
+  document.getElementById('modeFilter').addEventListener('change', () => renderBrowse());
+  document.getElementById('dailyBtn').addEventListener('click', openDaily);
+  document.getElementById('speakBtn').addEventListener('click', () => { state.speech = !state.speech; saveState(); render(); });
+  document.getElementById('resetProgressBtn').addEventListener('click', () => {
+    if (!confirm(state.lang==='fr' ? 'Réinitialiser tout le progrès ?' : 'Reset all progress?')) return;
+    state.progress = {}; state.history = []; state.dailyDoneIds=[]; saveState(); render();
+  });
+  document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { currentTab = btn.dataset.tab; if (currentTab==='quiz' && !quizSet.length) startQuiz(false); else activateTab(); }));
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').classList.remove('hidden'); });
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').classList.add('hidden');
+  });
+  if ('serviceWorker' in navigator) window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js'));
+  buildDailySet();
+  render();
+  window.studyPhrase = studyPhrase;
+  window.toggleMastered = toggleMastered;
+  window.markHard = markHard;
+  window.toggleAnswer = toggleAnswer;
+  window.prevFlash = prevFlash;
+  window.nextFlash = nextFlash;
+  window.markEasyCurrent = markEasyCurrent;
+  window.answerQuiz = answerQuiz;
+  window.startQuiz = startQuiz;
+  window.startExam = startExam;
+  window.answerExam = answerExam;
+  window.downloadCertificate = downloadCertificate;
+  window.newWritingSet = newWritingSet;
+  window.scoreWriting = scoreWriting;
+  window.saveNotes = saveNotes;
+  window.exportNotes = exportNotes;
+  </script>
+</body>
+</html>
