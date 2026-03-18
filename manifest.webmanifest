@@ -1,28 +1,23 @@
 {
-  "name": "SOC Report Lexicon",
-  "short_name": "SOC Lexicon",
-  "start_url": "https://socanalysttrainer3.netlify.app/",
+  "name": "SOC Analyst Trainer",
+  "short_name": "SOC Trainer",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "description": "Learn SOC analyst reporting phrases in English and French with flashcards, quizzes, writing practice, and offline study tools.",
   "icons": [
     {
-      "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
-      "src": "icons/maskable.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
-  ],
-  "description": "Learn SOC analyst reporting phrases in English and French with flashcards, quizzes, writing practice, and offline study tools.",
-  "id": "soc-analyst-trainer",
-  "dir": "auto",
-  "scope": "https://socanalysttrainer3.netlify.app/",
-  "lang": "en",
-  "orientation": "portrait"
+  ]
 }
